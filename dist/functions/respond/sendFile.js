@@ -1,9 +1,23 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const forgescript_1 = require("@tryforge/forgescript");
-const stream_1 = require("stream");
-const fs_1 = require("fs");
-exports.default = new forgescript_1.NativeFunction({
+import { ArgType, NativeFunction } from "@tryforge/forgescript"
+import { Context } from "../../core"
+import { Readable } from "stream"
+import { createReadStream } from "fs"
+import { extname } from "path"
+
+const mimeTypes: Record<string, string> = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".pdf": "application/pdf",
+    ".txt": "text/plain",
+    ".json": "application/json",
+    ".mp4": "video/mp4",
+    ".mp3": "audio/mpeg"
+};
+
+export default new NativeFunction({
     name: "$sendFile",
     version: "2.0.0",
     description: "Sends a file to the response.",
@@ -13,24 +27,30 @@ exports.default = new forgescript_1.NativeFunction({
         {
             name: "File Path",
             description: "The file path to send.",
-            type: forgescript_1.ArgType.String,
+            type: ArgType.String,
             required: true,
             rest: false
         },
         {
             name: "Status Code",
             description: "The status code of the response.",
-            type: forgescript_1.ArgType.Number,
+            type: ArgType.Number,
             required: false,
             rest: false
         }
     ],
     async execute(ctx, [filePath, statusCode]) {
-        const { ctx: c, resolve } = ctx.runtime.extras;
-        const file = (0, fs_1.createReadStream)(filePath);
-        const stream = stream_1.Readable.toWeb(file);
-        resolve(c.body(stream, (statusCode || undefined)));
-        return this.success();
+        const { ctx: c, resolve } = ctx.runtime.extras as { ctx: Context, resolve: (data: any) => void }
+        
+        const ext = extname(filePath).toLowerCase();
+        const contentType = mimeTypes[ext] || "application/octet-stream";
+
+        const file = createReadStream(filePath)
+        const stream = Readable.toWeb(file) as ReadableStream
+
+        c.header("Content-Type", contentType);
+        resolve(c.body(stream, (statusCode || 200) as any))
+
+        return this.success()
     }
-});
-//# sourceMappingURL=sendFile.js.map
+})
