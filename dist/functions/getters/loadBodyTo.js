@@ -18,7 +18,10 @@ exports.default = new forgescript_1.NativeFunction({
     ],
     async execute(ctx, [name]) {
         const { ctx: c } = ctx.runtime.extras;
-        const body = await c.req.parseBody().catch(() => null);
+     const body = await (c.req.header("content-type")?.includes("application/json") 
+          ? c.req.json() 
+        : c.req.parseBody()
+     ).catch(() => null);
         if (!body)
             return this.customError("No body found in the request.");
         ctx.setEnvironmentKey(name, body);
